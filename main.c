@@ -7,7 +7,7 @@
 void my_plot_objects(Object objs[], const size_t numobj, const double t, const Condition cond);
 void my_update_velocities(Object objs[], const size_t numobj, const Condition cond);
 void my_update_positions(Object objs[], const size_t numobj, const Condition cond);
-void collide(Object objs[], const size_t numobj, const Condition cond, int i, int j);
+void delete(Object objs[], const size_t numobj, const Condition cond);
 
 int main(int argc, char **argv) {
     const Condition cond =
@@ -18,13 +18,16 @@ int main(int argc, char **argv) {
             .dt = 1.0
         };
 
-    size_t objnum = 5;
+    size_t objnum = 8;
     Object objects[objnum];
-    objects[0] = (Object){ .m = 5, .y = -15, .x = 0, .vy = 3, .vx = 3};
-    objects[1] = (Object){ .m = 5, .y = 20, .x = 20, .vy = 0, .vx = 0};
-    objects[2] = (Object){ .m = 5, .y = -10, .x = -13, .vy = 0, .vx = 0};  
-    objects[3] = (Object){ .m = 5, .y = 10, .x = -10, .vy = 0, .vx = 0};
-    objects[4] = (Object){ .m = 5, .y = -10, .x = 17, .vy = 0, .vx = 0};
+    objects[0] = (Object){ .m = 1, .y = -15, .x = 0, .vy = 5, .vx = -8};
+    objects[1] = (Object){ .m = 1, .y = 20, .x = 20, .vy = 0, .vx = 0};
+    objects[2] = (Object){ .m = 1, .y = -10, .x = -13, .vy = 0, .vx = 0};  
+    objects[3] = (Object){ .m = 1, .y = 10, .x = -10, .vy = 0, .vx = 0};
+    objects[4] = (Object){ .m = 1, .y = -10, .x = 17, .vy = 0, .vx = 0};
+    objects[5] = (Object){ .m = 1, .y = -13, .x = 17, .vy = 0, .vx = 0};
+    objects[6] = (Object){ .m = 1, .y = 13, .x = -2, .vy = 0, .vx = 0};
+    objects[6] = (Object){ .m = 1, .y = 1, .x = -2, .vy = 0, .vx = 0};
     
     // シミュレーション. ループは整数で回しつつ、実数時間も更新する
     const double stop_time = 400;
@@ -33,13 +36,19 @@ int main(int argc, char **argv) {
         t = i * cond.dt;
         my_update_velocities(objects, objnum, cond);
         my_update_positions(objects, objnum, cond);
+        delete(objects, objnum, cond);
 
         // 表示の座標系は width/2, height/2 のピクセル位置が原点となるようにする
         my_plot_objects(objects, objnum, t, cond);
         
-        usleep(500 * 1000); // 200 x 1000us = 200 ms ずつ停止
+        usleep(200 * 1000); // 200 x 1000us = 200 ms ずつ停止
         printf("\e[%dA", cond.height+4);// 表示位置を巻き戻す。壁がないのでheight+2行（境界とパラメータ表示分）
     }
+    int i = 0;
+    for (int j = 0; j < objnum; j++) {
+        if (objects[j].m != 0) i++;
+    }
+    printf("残りの球の数は%d個です\n", i);
     return EXIT_SUCCESS;
 }
 
@@ -55,7 +64,11 @@ void my_plot_objects(Object objs[], const size_t numobj, const double t, const C
 
     printf(" ");
     for (int i = 0; i < cond.width; i++) {
-        printf("-");
+        if (i > cond.width/2 - 5 && i < cond.width/2 + 5) {
+            printf("\x1B[31m-\x1B[0m");
+        } else {
+            printf("-");
+        }
     }
     printf("\n");
     int flag = 0;
@@ -77,7 +90,11 @@ void my_plot_objects(Object objs[], const size_t numobj, const double t, const C
 
     printf(" ");
     for (int i = 0; i < cond.width; i++) {
-        printf("-");
+        if (i > cond.width/2 - 5 && i < cond.width/2 + 5) {
+            printf("\x1B[31m-\x1B[0m");
+        } else {
+            printf("-");
+        }
     }
     printf("\n");
     printf("time: %f\n", t);
@@ -106,13 +123,13 @@ void my_update_velocities(Object objs[], const size_t numobj, const Condition co
         objs[i].vx += acc_x * cond.dt; 
 
         if (objs[i].y == cond.height/2 || objs[i].y == -cond.height/2 + 1) {
-            objs[i].prev_vy = -objs[i].vy * 0.5;
-            objs[i].vy = -objs[i].vy * 0.5;
+            objs[i].prev_vy = -objs[i].vy * 0.7;
+            objs[i].vy = -objs[i].vy * 0.7;
         }
 
         if (objs[i].x == cond.width/2 || objs[i].x == -cond.width/2) {
-            objs[i].prev_vx = -objs[i].vx * 0.5;
-            objs[i].vx = -objs[i].vx * 0.5;
+            objs[i].prev_vx = -objs[i].vx * 0.7;
+            objs[i].vx = -objs[i].vx * 0.7;
         }
     }
 }
@@ -121,19 +138,26 @@ void my_update_positions(Object objs[], const size_t numobj, const Condition con
     for (int i = 0; i < numobj; i++) {
         objs[i].y += objs[i].prev_vy  * cond.dt;
         objs[i].x += objs[i].prev_vx  * cond.dt;
-        if (objs[i].y >= cond.height/2) objs[i].y = cond.height/2;
-        if (objs[i].y <= -cond.height/2 + 1) objs[i].y = -cond.height/2 + 1;
-        if (objs[i].x >= cond.width/2) objs[i].x = cond.width/2;
-        if (objs[i].x <= -cond.width/2) objs[i].x = -cond.width/2;
+        if (objs[i].y >= cond.height/2 && objs[i].m != 0) objs[i].y = cond.height/2;
+        if (objs[i].y <= -cond.height/2 + 1 && objs[i].m != 0) objs[i].y = -cond.height/2 + 1;
+        if (objs[i].x >= cond.width/2 && objs[i].m != 0) objs[i].x = cond.width/2;
+        if (objs[i].x <= -cond.width/2 && objs[i].m != 0) objs[i].x = -cond.width/2;
     }
 }
 
-void collide(Object objs[], const size_t numobj, const Condition cond, int i, int j) {
-    double m = objs[i].m + objs[j].m;
-    double vy = (objs[i].m * objs[i].vy + objs[j].m * objs[j].vy) / m;
-    double vx = (objs[i].m * objs[i].vx + objs[j].m * objs[j].vx) / m;
-    double y = (objs[i].m * objs[i].y + objs[j].m * objs[j].y) / m;
-    double x = (objs[i].m * objs[i].x + objs[j].m * objs[j].x) / m;
-    objs[i] = (Object){ .m = m, .y = y, .x = x, .vy = vy, .vx = vx};
-    objs[j] = (Object){ .m = 0, .y = 0, .x = 0, .vy = 0, .vx = 0};
+void delete(Object objs[], const size_t numobj, const Condition cond){
+    for (int i = 0; i < numobj; i++) {
+        if (objs[i].x > - 5 && objs[i].x <  5){
+            if (objs[i].y == cond.height/2) {
+                objs[i].m = 0;
+                objs[i].x = 10000000;
+                objs[i].y = 10000000;
+            }
+            if (objs[i].y == -cond.height/2 + 1) {
+                objs[i].m = 0;
+                objs[i].x = 10000000;
+                objs[i].y = 10000000;
+            }
+        }
+    }
 }
